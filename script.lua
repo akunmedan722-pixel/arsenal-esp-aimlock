@@ -1,13 +1,13 @@
 --[[
-    ARSENAL AIM LOCK + ESP SCRIPT (LIGHTWEIGHT VERSION)
+    ARSENAL AIM LOCK + ESP SCRIPT (MOBILE TOUCH UI)
     ====================================================
-    Optimized untuk performa maksimal dengan resource minimal
+    Rayfield-style GUI dengan Touch Control
     Features:
-    - Aim Lock dengan target selection (Head, Body, Hand)
-    - ESP toggle (ON/OFF)
-    - Draggable UI
-    - Lightweight & Fast
-    - Keyboard shortcuts (E, R, F)
+    - GUI always-on dengan header di atas
+    - Touch buttons (Mobile Optimized)
+    - Aim Lock dengan target selection
+    - ESP toggle
+    - No keyboard required
 ]]
 
 local Players = game:GetService("Players")
@@ -30,16 +30,17 @@ local Config = {
 -- ESP Storage
 local ESPObjects = {}
 local LastESPUpdate = 0
-local ESPUpdateInterval = 0.5 -- Update ESP setiap 0.5 detik
+local ESPUpdateInterval = 0.5
 
--- UI References
+-- UI State
 local MainGUI = nil
-local UIDragging = false
-local DragStart = nil
+local HeaderButton = nil
+local isExpanded = false
 
--- Colors (Minimalist)
+-- Colors (SkyZen Palette)
 local Colors = {
     Primary = Color3.fromRGB(0, 170, 255),
+    Secondary = Color3.fromRGB(80, 215, 255),
     Success = Color3.fromRGB(0, 255, 136),
     Error = Color3.fromRGB(255, 85, 105),
     Background = Color3.fromRGB(10, 15, 30),
@@ -79,7 +80,6 @@ local function createESP(player)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
     
-    -- Box Adornment
     local espBox = Instance.new("BoxHandleAdornment")
     espBox.Size = Vector3.new(3, 5, 3)
     espBox.Color3 = Colors.Primary
@@ -87,7 +87,6 @@ local function createESP(player)
     espBox.AlwaysOnTop = true
     espBox.Parent = humanoidRootPart
     
-    -- Billboard Label
     local espLabel = Instance.new("BillboardGui")
     espLabel.Size = UDim2.new(4, 0, 2, 0)
     espLabel.MaxDistance = Config.MaxDistance
@@ -185,111 +184,149 @@ local function aimLock()
 end
 
 -- ============================================
--- UI CREATION (MINIMAL)
+-- UI CREATION (TOUCH OPTIMIZED)
 -- ============================================
 
-local function createUI()
+local function createMainUI()
     local gui = Instance.new("ScreenGui")
-    gui.Name = "ArsenalLite"
+    gui.Name = "ArsenalGUI"
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = PlayerGui
     
-    -- Main Container (Compact)
+    -- Main Container (Mobile Size: 90% width)
     local container = Instance.new("Frame")
-    container.Name = "Container"
-    container.Size = UDim2.fromOffset(350, 280)
-    container.Position = UDim2.fromOffset(20, 20)
+    container.Name = "MainContainer"
+    container.Size = UDim2.new(0.9, 0, 0, 420)
+    container.Position = UDim2.new(0.05, 0, 0, 50)
     container.BackgroundColor3 = Colors.Background
     container.BorderSizePixel = 0
     container.Parent = gui
-    round(container, 12)
+    round(container, 15)
     addStroke(container, Colors.Primary, 2)
     
-    -- Header (Draggable)
+    -- Header
     local header = Instance.new("Frame")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0.12, 0)
+    header.Size = UDim2.new(1, 0, 0.08, 0)
     header.BackgroundColor3 = Colors.Card
     header.BorderSizePixel = 0
     header.Parent = container
-    round(header, 12)
+    round(header, 15)
     
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 1, 0)
-    title.Position = UDim2.fromOffset(10, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "⚡ ARSENAL LITE"
-    title.TextColor3 = Colors.Primary
-    title.TextSize = 14
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = header
+    local headerTitle = Instance.new("TextLabel")
+    headerTitle.Size = UDim2.new(1, -50, 1, 0)
+    headerTitle.Position = UDim2.fromOffset(15, 0)
+    headerTitle.BackgroundTransparency = 1
+    headerTitle.Text = "⚡ SKYZEN ARSENAL"
+    headerTitle.TextColor3 = Colors.Primary
+    headerTitle.TextSize = 14
+    headerTitle.Font = Enum.Font.GothamBlack
+    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    headerTitle.Parent = header
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.fromOffset(40, 30)
+    closeBtn.Position = UDim2.new(1, -45, 0.5, -15)
+    closeBtn.BackgroundColor3 = Colors.Error
+    closeBtn.BackgroundTransparency = 0.3
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Colors.Text
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = header
+    round(closeBtn, 6)
     
     -- Content Area
     local content = Instance.new("Frame")
     content.Name = "Content"
-    content.Size = UDim2.new(1, 0, 0.88, 0)
-    content.Position = UDim2.fromScale(0, 0.12)
+    content.Size = UDim2.new(1, 0, 0.92, 0)
+    content.Position = UDim2.fromScale(0, 0.08)
     content.BackgroundTransparency = 1
     content.Parent = container
     
+    local scrolling = Instance.new("UIListLayout")
+    scrolling.Padding = UDim.new(0, 12)
+    scrolling.FillDirection = Enum.FillDirection.Vertical
+    scrolling.SortOrder = Enum.SortOrder.LayoutOrder
+    scrolling.Parent = content
+    
     local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 10)
-    padding.PaddingRight = UDim.new(0, 10)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingBottom = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    padding.PaddingTop = UDim.new(0, 12)
+    padding.PaddingBottom = UDim.new(0, 12)
     padding.Parent = content
     
-    -- Aim Lock Section
-    local aimLabel = Instance.new("TextLabel")
-    aimLabel.Size = UDim2.new(1, 0, 0.15, 0)
-    aimLabel.BackgroundTransparency = 1
-    aimLabel.Text = "🎯 AIM LOCK"
-    aimLabel.TextColor3 = Colors.Text
-    aimLabel.TextSize = 12
-    aimLabel.Font = Enum.Font.GothamBold
-    aimLabel.TextXAlignment = Enum.TextXAlignment.Left
-    aimLabel.Parent = content
+    -- ============================================
+    -- AIM LOCK SECTION
+    -- ============================================
     
-    local aimToggle = Instance.new("TextButton")
-    aimToggle.Name = "AimToggle"
-    aimToggle.Size = UDim2.new(0.48, 0, 0.2, 0)
-    aimToggle.Position = UDim2.fromOffset(0, 22)
-    aimToggle.BackgroundColor3 = Colors.Error
-    aimToggle.BackgroundTransparency = 0.3
-    aimToggle.BorderSizePixel = 0
-    aimToggle.Text = "OFF"
-    aimToggle.TextColor3 = Colors.Text
-    aimToggle.TextSize = 11
-    aimToggle.Font = Enum.Font.GothamBold
-    aimToggle.Parent = content
-    round(aimToggle, 5)
-    addStroke(aimToggle, Colors.Error, 1.5)
+    local aimSection = Instance.new("Frame")
+    aimSection.Name = "AimSection"
+    aimSection.Size = UDim2.new(1, 0, 0, 140)
+    aimSection.BackgroundColor3 = Colors.Card
+    aimSection.BorderSizePixel = 0
+    aimSection.Parent = content
+    aimSection.LayoutOrder = 1
+    round(aimSection, 10)
+    addStroke(aimSection, Colors.Primary, 1)
+    
+    local aimSectionPadding = Instance.new("UIPadding")
+    aimSectionPadding.PaddingLeft = UDim.new(0, 12)
+    aimSectionPadding.PaddingRight = UDim.new(0, 12)
+    aimSectionPadding.PaddingTop = UDim.new(0, 10)
+    aimSectionPadding.PaddingBottom = UDim.new(0, 10)
+    aimSectionPadding.Parent = aimSection
+    
+    local aimTitle = Instance.new("TextLabel")
+    aimTitle.Size = UDim2.new(1, 0, 0, 22)
+    aimTitle.BackgroundTransparency = 1
+    aimTitle.Text = "🎯 AIM LOCK"
+    aimTitle.TextColor3 = Colors.Text
+    aimTitle.TextSize = 13
+    aimTitle.Font = Enum.Font.GothamBold
+    aimTitle.TextXAlignment = Enum.TextXAlignment.Left
+    aimTitle.Parent = aimSection
+    
+    local aimToggleBtn = Instance.new("TextButton")
+    aimToggleBtn.Name = "AimToggle"
+    aimToggleBtn.Size = UDim2.new(1, 0, 0, 40)
+    aimToggleBtn.Position = UDim2.fromOffset(0, 28)
+    aimToggleBtn.BackgroundColor3 = Colors.Error
+    aimToggleBtn.BackgroundTransparency = 0.3
+    aimToggleBtn.BorderSizePixel = 0
+    aimToggleBtn.Text = "OFF"
+    aimToggleBtn.TextColor3 = Colors.Text
+    aimToggleBtn.TextSize = 14
+    aimToggleBtn.Font = Enum.Font.GothamBold
+    aimToggleBtn.Parent = aimSection
+    round(aimToggleBtn, 6)
+    addStroke(aimToggleBtn, Colors.Error, 1.5)
     
     local targetLabel = Instance.new("TextLabel")
-    targetLabel.Size = UDim2.new(0.48, 0, 0.2, 0)
-    targetLabel.Position = UDim2.fromScale(0.52, 0.08)
-    targetLabel.BackgroundColor3 = Colors.Card
-    targetLabel.BackgroundTransparency = 0.3
-    targetLabel.BorderSizePixel = 0
+    targetLabel.Size = UDim2.new(1, 0, 0, 18)
+    targetLabel.Position = UDim2.fromOffset(0, 72)
+    targetLabel.BackgroundTransparency = 1
     targetLabel.Text = "Target: Head"
     targetLabel.TextColor3 = Colors.Muted
-    targetLabel.TextSize = 10
-    targetLabel.Font = Enum.Font.GothamBold
-    targetLabel.Parent = content
-    round(targetLabel, 5)
+    targetLabel.TextSize = 11
+    targetLabel.Font = Enum.Font.GothamMedium
+    targetLabel.TextXAlignment = Enum.TextXAlignment.Left
+    targetLabel.Parent = aimSection
     
-    -- Target Selection
+    -- Target Buttons
     local targetContainer = Instance.new("Frame")
-    targetContainer.Size = UDim2.new(1, 0, 0.22, 0)
-    targetContainer.Position = UDim2.fromOffset(0, 48)
+    targetContainer.Size = UDim2.new(1, 0, 0, 32)
+    targetContainer.Position = UDim2.fromOffset(0, 95)
     targetContainer.BackgroundTransparency = 1
-    targetContainer.Parent = content
+    targetContainer.Parent = aimSection
     
     local targetLayout = Instance.new("UIListLayout")
     targetLayout.FillDirection = Enum.FillDirection.Horizontal
-    targetLayout.Padding = UDim.new(0, 5)
+    targetLayout.Padding = UDim.new(0, 6)
     targetLayout.Parent = targetContainer
     
     local targets = {"Head", "Torso", "RightHand"}
@@ -303,7 +340,7 @@ local function createUI()
         btn.BorderSizePixel = 0
         btn.Text = target:sub(1, 1)
         btn.TextColor3 = Colors.Text
-        btn.TextSize = 10
+        btn.TextSize = 11
         btn.Font = Enum.Font.GothamBold
         btn.Parent = targetContainer
         round(btn, 4)
@@ -312,7 +349,7 @@ local function createUI()
         btn.MouseButton1Click:Connect(function()
             Config.TargetPart = targetKeys[i]
             targetLabel.Text = "Target: " .. target
-            for j, child in ipairs(targetContainer:GetChildren()) do
+            for _, child in ipairs(targetContainer:GetChildren()) do
                 if child:IsA("TextButton") then
                     child.BackgroundColor3 = (child == btn) and Colors.Primary or Colors.Card
                     child.BackgroundTransparency = (child == btn) and 0.2 or 0.5
@@ -321,150 +358,166 @@ local function createUI()
         end)
     end
     
-    -- ESP Section
-    local espLabel = Instance.new("TextLabel")
-    espLabel.Size = UDim2.new(1, 0, 0.12, 0)
-    espLabel.Position = UDim2.fromOffset(0, 75)
-    espLabel.BackgroundTransparency = 1
-    espLabel.Text = "👁️ ESP"
-    espLabel.TextColor3 = Colors.Text
-    espLabel.TextSize = 12
-    espLabel.Font = Enum.Font.GothamBold
-    espLabel.TextXAlignment = Enum.TextXAlignment.Left
-    espLabel.Parent = content
+    -- ============================================
+    -- ESP SECTION
+    -- ============================================
     
-    local espToggle = Instance.new("TextButton")
-    espToggle.Name = "ESPToggle"
-    espToggle.Size = UDim2.new(1, 0, 0.22, 0)
-    espToggle.Position = UDim2.fromOffset(0, 92)
-    espToggle.BackgroundColor3 = Colors.Success
-    espToggle.BackgroundTransparency = 0.2
-    espToggle.BorderSizePixel = 0
-    espToggle.Text = "ON"
-    espToggle.TextColor3 = Colors.Text
-    espToggle.TextSize = 11
-    espToggle.Font = Enum.Font.GothamBold
-    espToggle.Parent = content
-    round(espToggle, 5)
-    addStroke(espToggle, Colors.Success, 1.5)
+    local espSection = Instance.new("Frame")
+    espSection.Name = "ESPSection"
+    espSection.Size = UDim2.new(1, 0, 0, 100)
+    espSection.BackgroundColor3 = Colors.Card
+    espSection.BorderSizePixel = 0
+    espSection.Parent = content
+    espSection.LayoutOrder = 2
+    round(espSection, 10)
+    addStroke(espSection, Colors.Secondary, 1)
     
-    -- Max Distance Slider
-    local distLabel = Instance.new("TextLabel")
-    distLabel.Size = UDim2.new(0.7, 0, 0.12, 0)
-    distLabel.Position = UDim2.fromOffset(0, 120)
-    distLabel.BackgroundTransparency = 1
-    distLabel.Text = "Max Range: 500"
-    distLabel.TextColor3 = Colors.Muted
-    distLabel.TextSize = 9
-    distLabel.Font = Enum.Font.GothamMedium
-    distLabel.TextXAlignment = Enum.TextXAlignment.Left
-    distLabel.Parent = content
+    local espSectionPadding = Instance.new("UIPadding")
+    espSectionPadding.PaddingLeft = UDim.new(0, 12)
+    espSectionPadding.PaddingRight = UDim.new(0, 12)
+    espSectionPadding.PaddingTop = UDim.new(0, 10)
+    espSectionPadding.PaddingBottom = UDim.new(0, 10)
+    espSectionPadding.Parent = espSection
     
-    -- Info Text
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0.15, 0)
-    info.Position = UDim2.fromOffset(0, 135)
-    info.BackgroundTransparency = 1
-    info.Text = "E: Aim | R: ESP | F: Toggle"
-    info.TextColor3 = Colors.Muted
-    info.TextSize = 8
-    info.Font = Enum.Font.GothamMedium
-    info.TextWrapped = true
-    info.Parent = content
+    local espTitle = Instance.new("TextLabel")
+    espTitle.Size = UDim2.new(1, 0, 0, 22)
+    espTitle.BackgroundTransparency = 1
+    espTitle.Text = "👁️ ESP"
+    espTitle.TextColor3 = Colors.Text
+    espTitle.TextSize = 13
+    espTitle.Font = Enum.Font.GothamBold
+    espTitle.TextXAlignment = Enum.TextXAlignment.Left
+    espTitle.Parent = espSection
     
-    -- Button Events
-    aimToggle.MouseButton1Click:Connect(function()
+    local espToggleBtn = Instance.new("TextButton")
+    espToggleBtn.Name = "ESPToggle"
+    espToggleBtn.Size = UDim2.new(1, 0, 0, 50)
+    espToggleBtn.Position = UDim2.fromOffset(0, 28)
+    espToggleBtn.BackgroundColor3 = Colors.Success
+    espToggleBtn.BackgroundTransparency = 0.2
+    espToggleBtn.BorderSizePixel = 0
+    espToggleBtn.Text = "ON"
+    espToggleBtn.TextColor3 = Colors.Text
+    espToggleBtn.TextSize = 14
+    espToggleBtn.Font = Enum.Font.GothamBold
+    espToggleBtn.Parent = espSection
+    round(espToggleBtn, 6)
+    addStroke(espToggleBtn, Colors.Success, 1.5)
+    
+    -- ============================================
+    -- INFO SECTION
+    -- ============================================
+    
+    local infoSection = Instance.new("Frame")
+    infoSection.Name = "InfoSection"
+    infoSection.Size = UDim2.new(1, 0, 0, 70)
+    infoSection.BackgroundColor3 = Colors.Card
+    infoSection.BackgroundTransparency = 0.5
+    infoSection.BorderSizePixel = 0
+    infoSection.Parent = content
+    infoSection.LayoutOrder = 3
+    round(infoSection, 10)
+    
+    local infoPadding = Instance.new("UIPadding")
+    infoPadding.PaddingLeft = UDim.new(0, 12)
+    infoPadding.PaddingRight = UDim.new(0, 12)
+    infoPadding.PaddingTop = UDim.new(0, 10)
+    infoPadding.PaddingBottom = UDim.new(0, 10)
+    infoPadding.Parent = infoSection
+    
+    local infoText = Instance.new("TextLabel")
+    infoText.Size = UDim2.new(1, 0, 1, 0)
+    infoText.BackgroundTransparency = 1
+    infoText.Text = "📱 Touch Control:\nTap buttons untuk toggle fitur\nTap ✕ untuk close"
+    infoText.TextColor3 = Colors.Muted
+    infoText.TextSize = 10
+    infoText.Font = Enum.Font.GothamMedium
+    infoText.TextWrapped = true
+    infoText.TextXAlignment = Enum.TextXAlignment.Left
+    infoText.Parent = infoSection
+    
+    -- ============================================
+    -- BUTTON EVENTS
+    -- ============================================
+    
+    aimToggleBtn.MouseButton1Click:Connect(function()
         Config.AimLockEnabled = not Config.AimLockEnabled
         if Config.AimLockEnabled then
-            aimToggle.Text = "ON"
-            aimToggle.BackgroundColor3 = Colors.Success
-            aimToggle.BackgroundTransparency = 0.2
-            addStroke(aimToggle, Colors.Success, 1.5)
+            aimToggleBtn.Text = "ON"
+            aimToggleBtn.BackgroundColor3 = Colors.Success
+            aimToggleBtn.BackgroundTransparency = 0.2
         else
-            aimToggle.Text = "OFF"
-            aimToggle.BackgroundColor3 = Colors.Error
-            aimToggle.BackgroundTransparency = 0.3
-            addStroke(aimToggle, Colors.Error, 1.5)
+            aimToggleBtn.Text = "OFF"
+            aimToggleBtn.BackgroundColor3 = Colors.Error
+            aimToggleBtn.BackgroundTransparency = 0.3
         end
     end)
     
-    espToggle.MouseButton1Click:Connect(function()
+    espToggleBtn.MouseButton1Click:Connect(function()
         Config.ESPEnabled = not Config.ESPEnabled
         if Config.ESPEnabled then
-            espToggle.Text = "ON"
-            espToggle.BackgroundColor3 = Colors.Success
+            espToggleBtn.Text = "ON"
+            espToggleBtn.BackgroundColor3 = Colors.Success
         else
-            espToggle.Text = "OFF"
-            espToggle.BackgroundColor3 = Colors.Error
+            espToggleBtn.Text = "OFF"
+            espToggleBtn.BackgroundColor3 = Colors.Error
             clearAllESP()
         end
     end)
     
-    -- Drag Functionality
-    header.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            UIDragging = true
-            DragStart = UserInputService:GetMouseLocation()
-            local startPos = container.Position
-            
-            local connection
-            connection = RunService.RenderStepped:Connect(function()
-                if UIDragging then
-                    local currentMouse = UserInputService:GetMouseLocation()
-                    local delta = currentMouse - DragStart
-                    container.Position = UDim2.fromOffset(
-                        startPos.X.Offset + delta.X,
-                        startPos.Y.Offset + delta.Y
-                    )
-                else
-                    connection:Disconnect()
-                end
-            end)
+    closeBtn.MouseButton1Click:Connect(function()
+        container.Visible = false
+        HeaderButton.Visible = true
+    end)
+    
+    return gui, container
+end
+
+local function createHeaderButton()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "HeaderButtonGUI"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Parent = PlayerGui
+    
+    local button = Instance.new("TextButton")
+    button.Name = "HeaderButton"
+    button.Size = UDim2.fromOffset(180, 45)
+    button.Position = UDim2.new(0.5, -90, 0, 10)
+    button.BackgroundColor3 = Colors.Primary
+    button.BorderSizePixel = 0
+    button.Text = "⚡ SKYZEN"
+    button.TextColor3 = Colors.Text
+    button.TextSize = 16
+    button.Font = Enum.Font.GothamBlack
+    button.Parent = gui
+    round(button, 8)
+    addStroke(button, Colors.Primary, 2)
+    
+    button.MouseButton1Click:Connect(function()
+        if MainGUI then
+            MainGUI.MainContainer.Visible = true
+            button.Visible = false
         end
     end)
     
-    header.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            UIDragging = false
-        end
-    end)
-    
-    return gui
+    return button
 end
 
 -- ============================================
 -- MAIN INITIALIZATION
 -- ============================================
 
--- Wait for character
 if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
 end
 
 -- Create UI
-MainGUI = createUI()
+local gui, mainContainer = createMainUI()
+MainGUI = gui
+HeaderButton = createHeaderButton()
 
--- Keyboard Shortcuts
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Enum.KeyCode.E then
-        Config.AimLockEnabled = not Config.AimLockEnabled
-    elseif input.KeyCode == Enum.KeyCode.R then
-        Config.ESPEnabled = not Config.ESPEnabled
-        if not Config.ESPEnabled then clearAllESP() end
-    elseif input.KeyCode == Enum.KeyCode.F then
-        if MainGUI then
-            MainGUI:Destroy()
-            MainGUI = nil
-        else
-            MainGUI = createUI()
-        end
-    end
-end)
-
--- ESP Update Loop (Optimized - setiap 0.5 detik)
+-- ESP Update Loop
 RunService.RenderStepped:Connect(function()
     local currentTime = tick()
     if currentTime - LastESPUpdate >= ESPUpdateInterval then
@@ -491,6 +544,5 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 print("✅ Arsenal Lite Loaded!")
-print("E = Aim Lock Toggle")
-print("R = ESP Toggle")
-print("F = Toggle UI")
+print("📱 Mobile Touch Control Enabled")
+print("UI Style: Rayfield (SkyZen)")
